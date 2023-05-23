@@ -11,6 +11,7 @@ url = "http://localhost:8000/query"
 nlp = spacy.load("en_core_web_sm")
 
 def Post_to_backend(text):
+    print("making request to MySQL")
     text_data = text
 
     # Make the POST request
