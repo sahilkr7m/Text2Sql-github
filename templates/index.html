@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Natural Language to SQL</title>
+</head>
+<style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    table th,
+    table td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    table th {
+        background-color: #f2f2f2;
+    }
+</style>
+
+<body>
+    <h1>Natural Language to SQL</h1>
+
+    <form action="/query" method="post">
+        <label for="user_query">Query in Natural Language:</label><br>
+        <textarea id="user_query" name="user_query" rows="4" cols="50"></textarea><br><br>
+
+        <input type="submit" value="Submit">
+    </form>
+
+    <div>
+        {% if results %}
+        <table>
+            <tr>
+                {% for column in results[0] %}
+                <th>{{ column }}</th>
+                {% endfor %}
+            </tr>
+            {% for row in results[1:] %}
+            <tr>
+                {% for value in row %}
+                <td>{{ value }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+    </div>
+</body>
+
+</html>
