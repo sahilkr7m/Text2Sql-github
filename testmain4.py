@@ -458,9 +458,9 @@ def process_query():
     results = execute_query(sql_query[0])
     # print(results)
     # results = sql_query[0]
-    # print(results)
+    print(results)
 
-    return render_template('index.html', results=results)
+    # return render_template('index.html', results=results)
 
 if __name__ == '__main__':
     app.run(host="localhost", port=8000, debug=True)

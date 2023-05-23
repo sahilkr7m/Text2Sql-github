@@ -5,8 +5,25 @@ from scipy.io import wavfile
 import numpy as np
 import whisper
 import spacy
+import requests
+url = "http://localhost:8000/query"
 
 nlp = spacy.load("en_core_web_sm")
+
+def Post_to_backend(text):
+    text_data = text
+
+    # Make the POST request
+    response = requests.post(url, data=text_data)
+
+    # Check the response
+    if response.status_code == 200:
+        print("Request successful!")
+        print("Response:", response.text)
+    else:
+        print("Request failed with status code:", response.status_code)
+
+
 
 def audio_to_text(audiofile):
     model = whisper.load_model("base")
@@ -14,7 +31,8 @@ def audio_to_text(audiofile):
     print(result["text"])
 
     sentence = result["text"]
-    doc = nlp(sentence)
+    # doc = nlp(sentence)
+    Post_to_backend(sentence)
     
 
 class AudioRecorder:
