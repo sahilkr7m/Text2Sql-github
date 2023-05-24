@@ -438,15 +438,6 @@ def home():
 
 @app.route('/query', methods=['POST'])
 def process_query():
-<<<<<<< HEAD
-    user_query = request.form['user_query']
-    user_query = user_query.lower()
-    print(user_query)
-    
-    
-    
-    
-=======
     # user_query = request.form['user_query']
     # user_query = user_query.lower()
     # print(user_query)
@@ -455,7 +446,6 @@ def process_query():
     print(text_data)
     user_query = text_data
 
->>>>>>> 5e0c0c228cf92887d7251fb4e3c702fb4f4fce6c
     columns_list = ['email', 'mobile', 'name', 'age', 'gender','mails','mail']
     replacement_list = {
         'email': 'emailid_f',
@@ -476,12 +466,8 @@ def process_query():
     # results = sql_query[0]
     print(results)
 
-<<<<<<< HEAD
-    return render_template('index.html', results=results)
-=======
     return str(results)
     # return render_template('index.html', results=results)
->>>>>>> 5e0c0c228cf92887d7251fb4e3c702fb4f4fce6c
 
 if __name__ == '__main__':
     app.run(host="localhost", port=8000, debug=True)
