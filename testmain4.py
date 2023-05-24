@@ -441,6 +441,10 @@ def process_query():
     user_query = request.form['user_query']
     user_query = user_query.lower()
     print(user_query)
+    
+    
+    
+    
     columns_list = ['email', 'mobile', 'name', 'age', 'gender','mails','mail']
     replacement_list = {
         'email': 'emailid_f',
@@ -460,7 +464,7 @@ def process_query():
     # results = sql_query[0]
     print(results)
 
-    # return render_template('index.html', results=results)
+    return render_template('index.html', results=results)
 
 if __name__ == '__main__':
     app.run(host="localhost", port=8000, debug=True)
