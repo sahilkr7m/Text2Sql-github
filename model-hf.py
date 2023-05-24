@@ -206,6 +206,33 @@ def replace_word(sentence, target_word, replacement_word):
     
     return replaced_sentence
 
+def detect_column_names(user_query, columns_list):
+    
+    doc = nlp(user_query)
+
+    detected_columns = []
+
+    
+    for token in doc:
+        best_match_score = 0
+        best_match_column = None
+        
+        for column in columns_list:
+           
+            match_score = fuzz.ratio(token.text.lower(), column.lower())
+            
+            
+            if match_score > best_match_score:
+                best_match_score = match_score
+                best_match_column = column
+        
+        
+        if best_match_score > 80:  
+            detected_columns.append(best_match_column)
+    
+    return detected_columns
+
+
 
 def replace_column_names(user_query, columns_list, replacement_list):
    
@@ -222,17 +249,7 @@ def replace_column_names(user_query, columns_list, replacement_list):
 
 
 
-columns_list = ['email', 'mobile', 'name', 'age', 'gender','mails','mail']
-replacement_list = {
-        'email': 'emailid_f',
-        'mobile': 'mobile_f',
-        'name': 'fullname',
-        'age': 'age',
-        'gender': 'gender',
-        'mail':'emailid_f',
-        'mails':'emailid_f',
-        'emails':'emailid_f',
-    }
+
 
 
 
@@ -253,6 +270,17 @@ def process_query():
     sql_query = inference(question=user_query, table=table)
     replaced_sentence=replace_word(sql_query,"table","svoc_v2")
     print(replaced_sentence)
+    columns_list = ['email', 'mobile', 'name', 'age', 'gender','mails','mail']
+    replacement_list = {
+        'email': 'emailid_f',
+        'mobile': 'mobile_f',
+        'name': 'fullname',
+        'age': 'age',
+        'gender': 'gender',
+        'mail':'emailid_f',
+        'mails':'emailid_f',
+        'emails':'emailid_f',
+    }
     modified_query = replace_column_names(replaced_sentence, columns_list, replacement_list)
 
     results = execute_query(modified_query)
