@@ -2,7 +2,8 @@ from typing import List
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from flask import Flask, render_template, request
 import mysql.connector
-
+from fuzzywuzzy import fuzz
+import spacy
 app = Flask(__name__)
 
 mysql_config = {
@@ -11,7 +12,7 @@ mysql_config = {
     'password': 'root',
     'database': 'test_db'
 }
-
+nlp = spacy.load("en_core_web_sm")
 def execute_query(query):
     try:
         connection = mysql.connector.connect(**mysql_config)
