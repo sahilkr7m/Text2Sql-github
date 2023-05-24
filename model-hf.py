@@ -267,10 +267,6 @@ def process_query():
     text_data = request.get_data(as_text=True)
     print(text_data)
     user_query = text_data
-
-    sql_query = inference(question=user_query, table=table)
-    replaced_sentence=replace_word(sql_query,"table","svoc_v2")
-    print(replaced_sentence)
     columns_list = ['email', 'mobile', 'name', 'age', 'gender','mails','mail']
     replacement_list = {
         'email': 'emailid_f',
@@ -282,9 +278,14 @@ def process_query():
         'mails':'emailid_f',
         'emails':'emailid_f',
     }
-    modified_query = replace_column_names(replaced_sentence, columns_list, replacement_list)
+    modified_query = replace_column_names(user_query, columns_list, replacement_list)
+    sql_query = inference(question=modified_query, table=table)
+    replaced_sentence=replace_word(sql_query,"table","svoc_v2")
+    print(replaced_sentence)
+    
+    
 
-    results = execute_query(modified_query)
+    results = execute_query(replaced_sentence)
     if results:
         print(results)
     else:
