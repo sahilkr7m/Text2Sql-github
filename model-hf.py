@@ -217,11 +217,16 @@ def home():
 
 @app.route('/query', methods=['POST'])
 def process_query():
-    user_query = request.form['user_query']
-    user_query = user_query.lower()
+    # user_query = request.form['user_query']
+    # user_query = user_query.lower()
+    text_data = request.get_data(as_text=True)
+    print(text_data)
+    user_query = text_data
+
     sql_query = inference(question=user_query, table=table)
     replaced_sentence=replace_word(sql_query,"table","svoc_v2")
     print(replaced_sentence)
+
     results = execute_query(replaced_sentence)
     if results:
         print(results)
@@ -229,8 +234,8 @@ def process_query():
         results="Not a Proper query"
     
     # print(results)
-
-    return render_template('index.html', results=results)
+    return str(results)
+    # return render_template('index.html', results=results)
 
 if __name__ == '__main__':
     app.run(host="localhost", port=8000, debug=True)
