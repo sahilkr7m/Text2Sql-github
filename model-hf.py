@@ -207,6 +207,33 @@ def replace_word(sentence, target_word, replacement_word):
     return replaced_sentence
 
 
+def replace_column_names(user_query, columns_list, replacement_list):
+   
+    detected_columns = detect_column_names(user_query, columns_list)
+
+    
+    for column in detected_columns:
+        replacement = replacement_list.get(column)
+        if replacement:
+            user_query = user_query.replace(column, replacement)
+
+    return user_query
+
+
+
+
+columns_list = ['email', 'mobile', 'name', 'age', 'gender','mails','mail']
+replacement_list = {
+        'email': 'emailid_f',
+        'mobile': 'mobile_f',
+        'name': 'fullname',
+        'age': 'age',
+        'gender': 'gender',
+        'mail':'emailid_f',
+        'mails':'emailid_f',
+        'emails':'emailid_f',
+    }
+
 
 
 print(inference(question="get people fullname with age equal 25 and email like sahil.kumar", table=table))
@@ -226,8 +253,9 @@ def process_query():
     sql_query = inference(question=user_query, table=table)
     replaced_sentence=replace_word(sql_query,"table","svoc_v2")
     print(replaced_sentence)
+    modified_query = replace_column_names(replaced_sentence, columns_list, replacement_list)
 
-    results = execute_query(replaced_sentence)
+    results = execute_query(modified_query)
     if results:
         print(results)
     else:

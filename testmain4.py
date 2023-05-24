@@ -305,7 +305,7 @@ def generate_query(column_name, table_name, where_clause=None, select_clause="*"
 
 queries = []
 
-# Generate queries based on the prompts
+
 for prompt in prompts:
     column = prompt.split(" ")[3].lower()  
     operator = prompt.split(" ")[5]  
@@ -321,7 +321,7 @@ for prompt in prompts:
     query = generate_query(column, "svoc_v2", where_clause=f"{column} {operator} '{value}'", select_clause=select_clause, from_clause=from_clause, group_by_clause=group_by_clause, having_clause=having_clause, order_by_clause=order_by_clause, limit_clause=limit_clause, like_value=like_value)
     queries.extend(query)
 
-# Print the generated queries
+
 for query in queries:
     print(query)
 
@@ -392,37 +392,37 @@ def generate_query_from_user_query(user_query):
 
 
 def detect_column_names(user_query, columns_list):
-    # Tokenize the user query using spaCy
+    
     doc = nlp(user_query)
 
     detected_columns = []
 
-    # Iterate over the tokens and perform fuzzy matching with the column names
+    
     for token in doc:
         best_match_score = 0
         best_match_column = None
         
         for column in columns_list:
-            # Calculate the fuzzy matching score
+           
             match_score = fuzz.ratio(token.text.lower(), column.lower())
             
-            # Update the best match if the current score is higher
+            
             if match_score > best_match_score:
                 best_match_score = match_score
                 best_match_column = column
         
-        # Adjust the threshold as per your requirement
-        if best_match_score > 80:  # Consider a match if the score is above 80
+        
+        if best_match_score > 80:  
             detected_columns.append(best_match_column)
     
     return detected_columns
 
 
 def replace_column_names(user_query, columns_list, replacement_list):
-    # Detect the column names in the user query
+   
     detected_columns = detect_column_names(user_query, columns_list)
 
-    # Replace the detected column names with the provided replacement list
+    
     for column in detected_columns:
         replacement = replacement_list.get(column)
         if replacement:
