@@ -3,11 +3,38 @@ import spacy
 import difflib
 # from spacy.lang.en.stop_words import STOP_WORDS
 from collections import deque
+import mysql.connector
 
 nlp = spacy.load("en_core_web_sm")
 
+
+mysql_config = {
+    'host': 'localhost',
+    'user': 'root',
+    'password': 'root',
+    'database': 'test_db'
+}
+
+def execute_query(query):
+    try:
+        connection = mysql.connector.connect(**mysql_config)
+        cursor = connection.cursor()
+
+        cursor.execute(query)
+        results = cursor.fetchall()
+
+        cursor.close()
+        connection.close()
+
+        return results
+    except Exception as e:
+        print(f"Error executing query: {e}")
+
+    return []
+
+
 # sentence = "get all emails phone names age gender from database db2 where age is greater than 25 and phoneno is equal 10 order by name in ascending and gender equal to male and phone equal 20"
-sentence = "get top fav destinations "
+sentence = "get top fav destinations where age greater than 34"
 doc = nlp(sentence)
 
 columns_present_in_DB = [
@@ -323,7 +350,7 @@ def generate_query(query_array):
         query+= " "
 
     if(len(from_database)==0):
-        query+= "FROM DB"
+        query+= "FROM svoc_v2"
         
         query+= " "
 
@@ -380,6 +407,9 @@ for token in doc:
 print(filtered_tokens)
 print(str(extracting_info(filtered_tokens)))
 print(generate_query(extracting_info(filtered_tokens)))
+sqlQuery=generate_query(extracting_info(filtered_tokens))
+results=execute_query(sqlQuery)
+print(results)
 
 
 # print("checking")
