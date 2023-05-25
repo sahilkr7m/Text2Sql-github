@@ -1,4 +1,5 @@
 # import whisper
+from flask import Flask, render_template, request
 import spacy
 import difflib
 # from spacy.lang.en.stop_words import STOP_WORDS
@@ -33,9 +34,6 @@ def execute_query(query):
     return []
 
 
-# sentence = "get all emails phone names age gender from database db2 where age is greater than 25 and phoneno is equal 10 order by name in ascending and gender equal to male and phone equal 20"
-sentence = "get top fav destinations where age greater than 34"
-doc = nlp(sentence)
 
 columns_present_in_DB = [
    "emailid_f",
@@ -197,7 +195,7 @@ reserved_keywords = ["get","give","find","from","where","and", "order","group","
 def map_column_with_db(text):
      for key in columns_present_in_DB:
                 similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
-                if(similarity_ratio>0.8):
+                if(similarity_ratio>0.5):
                     return key
 
 
@@ -378,38 +376,79 @@ def generate_query(query_array):
     return query
     
 
+# sentence = "get all emails phone names age gender from database db2 where age is greater than 25 and phoneno is equal 10 order by name in ascending and gender equal to male and phone equal 20"
+# sentence = "where age is more than 50 find the count emails "
+# doc = nlp(sentence)
+
+# filtered_tokens = []
+# for token in doc:
+#     # print(mapper_function(token.text, token.pos_))
+#     if(filter_token(token.text,token.pos_)!=""):
+#         filtered_tokens.append(filter_token(token.text,token.pos_))
+
+
+# print("extracting tokens.............")
+# print(filtered_tokens)
+# print("seperating them in different arrays...")
+# print(str(extracting_info(filtered_tokens)))
+# print("query generated....")
+# print(generate_query(extracting_info(filtered_tokens)))
+
+# print("executing query on SQL")
+# sqlQuery=generate_query(extracting_info(filtered_tokens))
+# results=execute_query(sqlQuery)
+
+# print(results)
+
+
+
+app = Flask(__name__)
+
+
+
+@app.route('/')
+def home():
+    return render_template('Text2Sql-github\templates\index.html', results=[])
+
+@app.route('/query', methods=['POST'])
+def process_query():
+
+    text_data = request.get_data(as_text=True)
+    print(text_data)
+
+    sentence = text_data
+    doc = nlp(sentence)
+
+    filtered_tokens = []
+    for token in doc:
+        # print(mapper_function(token.text, token.pos_))
+        if(filter_token(token.text,token.pos_)!=""):
+            filtered_tokens.append(filter_token(token.text,token.pos_))
+
+
+    print("extracting tokens.............")
+    print(filtered_tokens)
+    print("seperating them in different arrays...")
+    print(str(extracting_info(filtered_tokens)))
+    print("query generated....")
+    print(generate_query(extracting_info(filtered_tokens)))
+
+    print("executing query on SQL")
+    sqlQuery=generate_query(extracting_info(filtered_tokens))
+    results=execute_query(sqlQuery)
+
+    # print(results)
+
+
+    return str(results)
+    # return render_template('Text2Sql-github\templates\index.html', results=results)
+
+if __name__ == '__main__':
+    app.run(host="localhost", port=8000, debug=True)
 
 
 
 
-
-        
-
-
-
-            
-
-
-
-
-
-
-print("extracting tokens.............")
-
-filtered_tokens = []
-for token in doc:
-    # print(mapper_function(token.text, token.pos_))
-    if(filter_token(token.text,token.pos_)!=""):
-        filtered_tokens.append(filter_token(token.text,token.pos_))
-
-    # print(token.text, token.pos_, token.dep_ )
-
-print(filtered_tokens)
-print(str(extracting_info(filtered_tokens)))
-print(generate_query(extracting_info(filtered_tokens)))
-sqlQuery=generate_query(extracting_info(filtered_tokens))
-results=execute_query(sqlQuery)
-print(results)
 
 
 # print("checking")
