@@ -7,7 +7,7 @@ from collections import deque
 nlp = spacy.load("en_core_web_sm")
 
 # sentence = "get all emails phone names age gender from database db2 where age is greater than 25 and phoneno is equal 10 order by name in ascending and gender equal to male and phone equal 20"
-sentence = "get name email phoneno address where age greater than 30 and gender equal to male "
+sentence = "where age greater than 30 get email phoneno address  "
 doc = nlp(sentence)
 
 columns_present_in_DB = [
@@ -244,5 +244,7 @@ for token in doc:
 print(filtered_tokens)
 print(str(extracting_info(filtered_tokens)))
 print(generate_query(extracting_info(filtered_tokens)))
+
+
 # print("checking")
 # print(difflib.SequenceMatcher(None, "gerater", "greater").ratio())
