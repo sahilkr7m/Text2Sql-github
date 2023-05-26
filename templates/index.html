@@ -2,94 +2,150 @@
 <html>
 
 <head>
-    <title>Natural Language to SQL</title>
+    <title>Audio Transcription</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <style>
         body {
+            background-color: #f7f7f7;
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 0;
         }
 
         h1 {
-            color: #333;
-            margin-bottom: 20px;
+            color: #e56353;
+            text-align: center;
+            padding: 20px 0;
         }
 
-        form {
-            margin-bottom: 20px;
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        label {
+        #transcriptionResult {
+            margin-top: 20px;
+        }
+
+        #responseText {
+            font-weight: bold;
+            font-size: 18px;
+            line-height: 1.5;
+            margin-top: 10px;
+        }
+
+        #responseText span {
             display: block;
             margin-bottom: 5px;
         }
 
-        textarea {
-            width: 100%;
-            height: 100px;
-            padding: 5px;
-            font-size: 14px;
-            border: 1px solid #ccc;
-            resize: vertical;
-        }
-
-        input[type="submit"] {
-            padding: 8px 16px;
-            font-size: 16px;
-            background-color: #4CAF50;
+        #recordButton,
+        #stopButton {
+            background-color: #e56353;
             color: #fff;
             border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
             cursor: pointer;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        table th,
-        table td {
-            padding: 8px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-
-        table th {
-            background-color: #f2f2f2;
+        #recordButton:disabled,
+        #stopButton:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
     </style>
 </head>
 
 <body>
-    <h1>Natural Language to SQL</h1>
+    <h1>Audio Transcription</h1>
+    <button id="recordButton">Record</button>
+    <button id="stopButton" disabled>Stop</button>
+    <div id="transcriptionResult"></div>
 
-    <form action="/query" method="post">
-        <label for="user_query">Query in Natural Language:</label>
-        <textarea id="user_query" name="user_query" rows="4" cols="50"></textarea>
+    <script>
+        var audioChunks = [];
+        var mediaRecorder;
+        var recordButton = document.getElementById('recordButton');
+        var stopButton = document.getElementById('stopButton');
+        var transcriptionResult = document.getElementById('transcriptionResult');
 
-        <br><br>
-        <input type="submit" value="Submit">
-    </form>
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function (stream) {
+                    mediaRecorder = new MediaRecorder(stream);
 
-    <div>
-        {% if results %}
-        <table>
-            <tr>
-                {% for column in results[0] %}
-                <th>{{ column }}</th>
-                {% endfor %}
-            </tr>
-            {% for row in results[1:] %}
-            <tr>
-                {% for value in row %}
-                <td>{{ value }}</td>
-                {% endfor %}
-            </tr>
-            {% endfor %}
-        </table>
-        {% endif %}
-    </div>
+                    mediaRecorder.addEventListener('dataavailable', function (e) {
+                        audioChunks.push(e.data);
+                    });
+
+                    mediaRecorder.addEventListener('stop', function () {
+                        var audioBlob = new Blob(audioChunks);
+                        var audioUrl = URL.createObjectURL(audioBlob);
+                        var audio = new Audio(audioUrl);
+                        audio.controls = true;
+                        transcriptionResult.appendChild(audio);
+
+                        var formData = new FormData();
+                        formData.append('audio', audioBlob, 'audio.wav');
+                        $.ajax({
+                            type: 'POST',
+                            url: '/process_audio',
+                            data: formData,
+                            processData: false,
+                            contentType: false,
+                            success: function (response) {
+                                console.log(response);
+                                var new_response = response[1][0];
+                                var cleanedText = new_response.replace(/[^a-zA-Z0-9\s]/g, ''); // Remove unnecessary symbols
+                                var words = cleanedText.trim().split(/\s+/); // Split cleaned text by whitespace
+
+                                responseText.innerHTML = ''; // Clear previous content
+
+                                words.forEach(function (word) {
+                                    var wordElement = document.createElement('span');
+                                    wordElement.textContent = word;
+                                    responseText.appendChild(wordElement);
+                                    responseText.appendChild(document.createElement('br')); // Add line break after each word
+                                });
+                            },
+                            error: function (xhr, status, error) {
+                                console.error(xhr.responseText);
+                            }
+                        });
+                    });
+
+                    mediaRecorder.start();
+                    recordButton.disabled = true;
+                    stopButton.disabled = false;
+                });
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            recordButton.disabled = false;
+            stopButton.disabled = true;
+            audioChunks = [];
+        }
+
+        recordButton.addEventListener('click', startRecording);
+        stopButton.addEventListener('click', stopRecording);
+    </script>
+
+
+    <table id="responseTable">
+        <tr>
+            <th>Result</th>
+        </tr>
+        <tr>
+            <td id="responseText"></td>
+        </tr>
+    </table>
 </body>
 
 </html>
