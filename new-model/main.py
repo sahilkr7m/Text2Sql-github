@@ -351,6 +351,11 @@ def generate_query(query_array):
         query+= "FROM svoc_v2"
         
         query+= " "
+    else:
+        query+= "FROM "+ from_database[0]
+        
+        query+= " "
+
 
     if(len(where_clause)!=0):    
         and_count_max = len(where_clause) -1
