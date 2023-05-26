@@ -190,7 +190,7 @@ operator_mapping = {
     # "descending" : "DESC",
 }
 
-reserved_keywords = ["get","give","find","from","where","and", "order","group","having","count","ascending","descending"]
+reserved_keywords = ["get","from","where","and", "order","group","having","count","ascending","descending"]
 
 def map_column_with_db(text):
      for key in columns_present_in_DB:
@@ -208,26 +208,26 @@ def map_input_column_array_with_db_columns(input_columns):
 
     return mapped_array
     
-# def operator_mapping_function(text):
-#     for key,value in operator_mapping.items():
-#             similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
-#             if(similarity_ratio>0.8):
-#                 return value
 
 def filter_token(text, pos ):
     best_match = ""
     if(text in reserved_keywords):
         best_match = text
     elif(pos =="NOUN"):
-        best_match = text
+        best_match = replace_keywords_if_present(text)
 
     elif(pos== "NUM"):
         best_match = text
     else:
+        
+        for key,values in map_keywords.items():
+            if(text in values):
+                best_match = replace_keywords_if_present(text)
+        
         for key,value in operator_mapping.items():
-            similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
-            if(similarity_ratio>0.8):
-                best_match = value
+                similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
+                if(similarity_ratio>0.8):
+                    best_match = value
 
     return best_match
         
@@ -367,17 +367,28 @@ def generate_query(query_array):
 
     if(len(orderby_clause)!=0):
         query+="ORDER BY " + orderby_clause[0]+ " "+ orderby_clause[1]
-        
-
-
-
-
-
+    
     return query
     
+map_keywords = {
+    "get" : ['show', 'retrieve', 'display', 'list', 'fetch', 'view', 'select', 'show',"search","find","yet"],
+    "where" : ["whose","were", "filter","condition","limit","narrow","include","restrict","match","constraints"]
+}    
 
-# sentence = "get all emails phone names age gender from database db2 where age is greater than 25 and phoneno is equal 10 order by name in ascending and gender equal to male and phone equal 20"
-# sentence = "where age is more than 50 find the count emails "
+def replace_keywords_if_present(token):
+
+    for key,values in map_keywords.items():
+        if(token in values):
+            return key 
+        
+    return token
+
+            
+
+#FOR DEBUGGINGGG---------
+
+# sentence = "yet all emails phone names from database db2 were age is greater than 25 and fav_destination_state is equal 10"
+# # sentence = "where age is more than 50 show yet give find emails "
 # doc = nlp(sentence)
 
 # filtered_tokens = []
@@ -399,6 +410,15 @@ def generate_query(query_array):
 # results=execute_query(sqlQuery)
 
 # print(results)
+
+
+
+
+
+
+
+
+
 
 
 
@@ -445,15 +465,3 @@ def process_query():
 
 if __name__ == '__main__':
     app.run(host="localhost", port=8000, debug=True)
-
-
-
-
-
-
-# print("checking")
-# print(difflib.SequenceMatcher(None, "gerater", "greater").ratio())
-
-
-#flask app to handel wav file request
-#connect sql and execute query
