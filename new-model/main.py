@@ -407,11 +407,11 @@ def generate_query(query_array):
     return query
     
 map_keywords = {
-    "get" : ['show', 'retrieve', 'display', 'list', 'fetch', 'view', 'select', 'show',"search","find","yet"],
+    "get" : ['show', 'retrieve', 'display', 'list', 'fetch', 'view', 'select', 'show',"search","find","yet","give"],
     "where" : ["whose","were", "filter","condition","limit","narrow","include","restrict","match","constraints"],
     "max": ["maximum","largest","maxi"],
     "min": ["minimum","smallest","mini"],
-    "distinct" : ["unique"]
+    "distinct" : ["unique","different"]
 }    
 
 def replace_keywords_if_present(token):
