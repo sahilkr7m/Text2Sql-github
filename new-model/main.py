@@ -1,9 +1,6 @@
-# import whisper
 from flask import Flask, render_template, request
 import spacy
 import difflib
-# from spacy.lang.en.stop_words import STOP_WORDS
-from collections import deque
 import mysql.connector
 
 nlp = spacy.load("en_core_web_sm")
@@ -190,7 +187,7 @@ operator_mapping = {
     # "descending" : "DESC",
 }
 
-reserved_keywords = ["get","from","where","and", "order","group","having","count","ascending","descending"]
+reserved_keywords = ["get","from","where","and", "order","group","having","count","ascending","descending","min","max","distinct"]
 
 def map_column_with_db(text):
      for key in columns_present_in_DB:
@@ -249,19 +246,21 @@ def extracting_info(filtered_tokens):
     from_database =[]
     where_clause = []
     orderby_clause =[]
-    count =0
+ 
+    aggregrator_functions = ["get", "count", "min","max","distinct"]
+    agg_function_used =""
 
     i=0
     
     while(i<len(filtered_tokens)):
-        if(filtered_tokens[i]=="get" or filtered_tokens[i]=="count"):
-            if(filtered_tokens[i]=="count"):
-                count=1
+        if(filtered_tokens[i] in aggregrator_functions):
+            agg_function_used = filtered_tokens[i]
             end_index = next_token_index(i, filtered_tokens)
        
             for it in range(i+1, end_index):
                 selected_columns.append(filtered_tokens[it])
             i=end_index
+
         elif(filtered_tokens[i]=="from"):
             end_index = next_token_index(i, filtered_tokens)
 
@@ -276,8 +275,6 @@ def extracting_info(filtered_tokens):
             }
             where_clause.append(obj )
             
-            # for it in range(i+1, i+4):                
-            #     where_clause.append(filtered_tokens[it])
             i=i+4
         elif(filtered_tokens[i]=="and"):
 
@@ -311,7 +308,7 @@ def extracting_info(filtered_tokens):
 
     return [ map_input_column_array_with_db_columns(selected_columns),
     from_database ,
-    where_clause, orderby_clause, count]
+    where_clause, orderby_clause, agg_function_used]
 
         
 
@@ -320,13 +317,13 @@ def generate_query(query_array):
     from_database = query_array[1]
     where_clause = query_array[2]
     orderby_clause =query_array[3]
-    count =query_array[4]
+    agg_funtion_used =query_array[4]
 
-    query = ""
+    query = "SELECT "
     comma_count=0
     comma_count_max = len(selected_columns)-1
-    if(count==1):
-        query+="SELECT COUNT("
+    if(agg_funtion_used=="count"):
+        query+="COUNT("
         for i in selected_columns:
             query+= i
             if(comma_count<comma_count_max):
@@ -336,14 +333,49 @@ def generate_query(query_array):
         query+=")"
         
         query+= " "
-    else:
-
-        query+="SELECT "
+    elif(agg_funtion_used=="get"):
+        
+        if(len(selected_columns)!=0):
+            for i in selected_columns:
+                query+=i
+                if(comma_count<comma_count_max):
+                    query+=","
+                    comma_count+=1
+        else:
+            query+="*"
+        
+        query+= " "
+    elif(agg_funtion_used=="min"):
+        query+="MIN("
         for i in selected_columns:
-            query+=i
+            query+= i
             if(comma_count<comma_count_max):
                 query+=","
                 comma_count+=1
+        
+        query+=")"
+        
+        query+= " "
+    elif(agg_funtion_used=="max"):
+        query+="MAX("
+        for i in selected_columns:
+            query+= i
+            if(comma_count<comma_count_max):
+                query+=","
+                comma_count+=1
+        
+        query+=")"
+        
+        query+= " "
+    elif(agg_funtion_used=="distinct"):
+        query+="DISTINCT("
+        for i in selected_columns:
+            query+= i
+            if(comma_count<comma_count_max):
+                query+=","
+                comma_count+=1
+        
+        query+=")"
         
         query+= " "
 
@@ -355,7 +387,6 @@ def generate_query(query_array):
         query+= "FROM "+ from_database[0]
         
         query+= " "
-
 
     if(len(where_clause)!=0):    
         and_count_max = len(where_clause) -1
@@ -377,7 +408,10 @@ def generate_query(query_array):
     
 map_keywords = {
     "get" : ['show', 'retrieve', 'display', 'list', 'fetch', 'view', 'select', 'show',"search","find","yet"],
-    "where" : ["whose","were", "filter","condition","limit","narrow","include","restrict","match","constraints"]
+    "where" : ["whose","were", "filter","condition","limit","narrow","include","restrict","match","constraints"],
+    "max": ["maximum","largest","maxi"],
+    "min": ["minimum","smallest","mini"],
+    "distinct" : ["unique"]
 }    
 
 def replace_keywords_if_present(token):
@@ -388,8 +422,7 @@ def replace_keywords_if_present(token):
         
     return token
 
-            
-
+   
 #FOR DEBUGGINGGG---------
 
 # sentence = "yet all emails phone names from database db2 were age is greater than 25 and fav_destination_state is equal 10"
@@ -415,16 +448,6 @@ def replace_keywords_if_present(token):
 # results=execute_query(sqlQuery)
 
 # print(results)
-
-
-
-
-
-
-
-
-
-
 
 
 app = Flask(__name__)
