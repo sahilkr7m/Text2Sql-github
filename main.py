@@ -8,15 +8,15 @@ import requests
 app = Flask(__name__)
 
 def transcribe_audio(audio_data):
-    # Load audio file using pydub
+  
     audio = AudioSegment.from_file(audio_data)
 
-    # Convert audio to PCM WAV format
-    audio = audio.set_channels(1)  # Ensure single channel audio
+    
+    audio = audio.set_channels(1)
     audio = audio.set_frame_rate(16000)  # Set sample rate to 16000 Hz
     audio.export("temp.wav", format="wav")
 
-    # Perform transcription
+    
     r = sr.Recognizer()
     with sr.AudioFile("temp.wav") as source:
         audio = r.record(source)
@@ -28,7 +28,7 @@ def transcribe_audio(audio_data):
     except sr.UnknownValueError:
         text = "Speech recognition could not understand the audio."
 
-    # Remove temporary WAV file
+    
     os.remove("temp.wav")
 
     return text
@@ -39,7 +39,7 @@ def send_transcription(transcription):
 
     response = requests.post(url, data=transcription, headers=headers)
 
-    # Display the response content
+   
     print(response.text)
 
     return response.text
@@ -55,7 +55,7 @@ def process_audio():
     print(transcription)
     response_text = send_transcription(transcription)
 
-    # Format the response data for table structure
+    
     response_data = [['Transcription'], [response_text]]
 
     return jsonify(response_data)
