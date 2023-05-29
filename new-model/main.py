@@ -2,6 +2,7 @@ from flask import Flask, render_template, request
 import spacy
 import difflib
 import mysql.connector
+from itertools import combinations
 
 nlp = spacy.load("en_core_web_sm")
 
@@ -187,24 +188,81 @@ operator_mapping = {
     # "descending" : "DESC",
 }
 
-reserved_keywords = ["get","from","where","and", "order","group","having","count","ascending","descending","min","max","distinct"]
+reserved_keywords = ["get","from","where","and", "order","group","having","count","ascending","descending","min","max","distinct","starts_with","ends_with",">","<","="]
+
+
+
+# def map_column_with_db(text):
+#      for key in columns_present_in_DB:
+#                 similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
+#                 if(similarity_ratio>0.5):
+#                     return key
+
+# def map_input_column_array_with_db_columns(input_columns):
+#     mapped_array=[]
+       
+#     for text in input_columns:
+#        if(map_column_with_db(text)):
+#             mapped_array.append(map_column_with_db(text))
+
+#     return mapped_array
+   
+
 
 def map_column_with_db(text):
-     for key in columns_present_in_DB:
+    if(text in columns_present_in_DB):
+        return (text,True)
+    for key in columns_present_in_DB:
                 similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
-                if(similarity_ratio>0.5):
-                    return key
+                if(similarity_ratio>0.8):  #changed here
+                    return (key,True)
+    
+    return (text,False)
 
+def generate_different_columns_permutations(my_array):
+    # Generate all combinations
+    combinations_list = []
+    for r in range(1, len(my_array) + 1):
+        combinations_list.extend(combinations(my_array, r))
+
+    # Concatenate the combinations
+    concatenated_combinations = []
+    for combination in combinations_list:
+        concatenated_combinations.append("_".join(combination))
+
+    # for combination in concatenated_combinations:
+    #     print(combination)
+
+    return concatenated_combinations
 
 def map_input_column_array_with_db_columns(input_columns):
     mapped_array=[]
-       
+    
     for text in input_columns:
-       if(map_column_with_db(text)):
-            mapped_array.append(map_column_with_db(text))
+            if(len(text)==1):
+                print("checking for text :",text)
+                key, is_changed = map_column_with_db(text)
+                if(is_changed or key==text):
+                        input_columns.remove(text)
+                        mapped_array.append(key[0])
+            else:                   
+                generated_columns_combinations = generate_different_columns_permutations(text)
+                print("all combinations of columns.. which were not matched")
+                print(generated_columns_combinations)
+
+                for item in generated_columns_combinations:
+                    key, is_changed = map_column_with_db(item)
+                    # print(map_column_with_db(item))
+                    if(is_changed):
+                        if((key in mapped_array) == 0):
+                            mapped_array.append(key)
+                            
+
 
     return mapped_array
     
+
+
 
 def filter_token(text, pos ):
     best_match = ""
@@ -216,21 +274,30 @@ def filter_token(text, pos ):
     elif(pos== "NUM"):
         best_match = text
     else:
-        
+        change=0
         for key,values in map_keywords.items():
             if(text in values):
                 best_match = replace_keywords_if_present(text)
-        
-        for key,value in operator_mapping.items():
-                similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
-                if(similarity_ratio>0.8):
-                    best_match = value
+                change=1
+        if(change==0):
+            # print("in filter token fxn and printing all matched operators")
+            for key,value in operator_mapping.items():
+                    similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
+                    # print(key,text,difflib.SequenceMatcher(None, key, text).ratio())
+                    if(similarity_ratio>0.8):
+                        best_match = value
+                        change=1
+        if(change==0):
+            best_match = text
 
     return best_match
         
 
 
 def next_token_index(index_start, filtered_tokens):
+    if(index_start==len(filtered_tokens)):
+        return index_start
+    
     i = index_start+1
     while(i<len(filtered_tokens)):
         if (filtered_tokens[i] in reserved_keywords):
@@ -251,15 +318,34 @@ def extracting_info(filtered_tokens):
     agg_function_used =""
 
     i=0
+
+    not_allowed = ["with","all","the","is","like","me","than","then"]
+
+    for item in filtered_tokens:
+        if(item in not_allowed):
+            filtered_tokens.remove(item)
+
+    print("pre-processing the tokens")
+    print(filtered_tokens)
     
     while(i<len(filtered_tokens)):
         if(filtered_tokens[i] in aggregrator_functions):
             agg_function_used = filtered_tokens[i]
             end_index = next_token_index(i, filtered_tokens)
-       
+
+            column_select=[]
             for it in range(i+1, end_index):
-                selected_columns.append(filtered_tokens[it])
+                    column_select.append(filtered_tokens[it])  
             i=end_index
+
+            got_column =map_input_column_array_with_db_columns([column_select])[0]
+            print("got_column in and fxn",got_column)
+               
+
+            if(got_column in columns_present_in_DB):
+                    selected_columns.append([got_column])
+      
+            # print("in get fxn column_insert",column_insert, " endindex", i)
 
         elif(filtered_tokens[i]=="from"):
             end_index = next_token_index(i, filtered_tokens)
@@ -267,26 +353,73 @@ def extracting_info(filtered_tokens):
             for it in range(i+1, end_index):
                 from_database.append(filtered_tokens[it])
             i=end_index
-        elif(filtered_tokens[i]=="where"):
-            obj = {
-                "col": map_column_with_db(filtered_tokens[i+1]),
-                "op": filtered_tokens[i+2],
-                "val": filtered_tokens[i+3],
-            }
-            where_clause.append(obj )
-            
-            i=i+4
-        elif(filtered_tokens[i]=="and"):
 
-            if(filtered_tokens[i+1] in columns_present_in_DB):
+        elif(filtered_tokens[i]=="where"):
+            # print("in where fxn")
+            end_index = next_token_index(i, filtered_tokens)
+
+            column_select=[]
+            for it in range(i+1, end_index):
+                column_select.append(filtered_tokens[it])  
+            i=end_index
+
+            # print("column_select",column_select)
+            got_column=""
+            if(len(column_select)==1):
+                got_column = map_input_column_array_with_db_columns([column_select])[0]
+            else:
+                got_column= map_input_column_array_with_db_columns([column_select])[0][0]
+
+            # print("got_column",got_column)
+
+            if(got_column in columns_present_in_DB):
+                # print("here in if condtn")
                 obj = {
-                "col": map_column_with_db(filtered_tokens[i+1]),
-                "op": filtered_tokens[i+2],
-                "val": filtered_tokens[i+3],
+                "col": got_column,
+                "op": filtered_tokens[i],
+                "val": filtered_tokens[i+1],
                 }
                 where_clause.append(obj )
-            
-            i=i+4
+                i=i+2
+        elif(filtered_tokens[i]=="and"):
+            # print("in and fxn")
+ 
+            if(filtered_tokens[i+1] in [">","<","="]):
+                obj = {
+                    "col": where_clause[-1]["col"],
+                    "op": filtered_tokens[i+1],
+                    "val": filtered_tokens[i+2],
+                    }
+                where_clause.append(obj )
+                i=i+3
+            else: 
+                end_index = next_token_index(i, filtered_tokens)
+
+                column_select=[]
+                for it in range(i+1, end_index):
+                    column_select.append(filtered_tokens[it])  
+                i=end_index
+
+                got_column = map_input_column_array_with_db_columns([column_select])[0]
+                print("got_column in and fxn",got_column)
+               
+
+                if(got_column in columns_present_in_DB):
+                    
+                    if(filtered_tokens[i] in [">","<","=","starts_with","ends_with"]):              
+                            obj = {
+                            "col": map_input_column_array_with_db_columns([column_select])[0],
+                            "op": filtered_tokens[i],
+                            "val": filtered_tokens[i+1],
+                            }
+                            where_clause.append(obj )
+                            i=i+2
+                    else:
+                            print("got_column appending in select array",got_column)
+                            selected_columns.append([got_column])
+
+                        
+                        
 
         elif(filtered_tokens[i]=="order"):
             if(filtered_tokens[i+1] in columns_present_in_DB):
@@ -301,12 +434,17 @@ def extracting_info(filtered_tokens):
                 # for it in range(i+1, i+3):
                 #     orderby_clause.append(filtered_tokens[it])
             i=i+3
+        # elif(filtered_tokens[i]=="like")
         else:
+            # print("in else fxn")
             i+=1
 
+    print("seperated values....")
+    print([ selected_columns,
+    from_database ,
+    where_clause, orderby_clause, agg_function_used])
 
-
-    return [ map_input_column_array_with_db_columns(selected_columns),
+    return [(selected_columns),
     from_database ,
     where_clause, orderby_clause, agg_function_used]
 
@@ -325,7 +463,7 @@ def generate_query(query_array):
     if(agg_funtion_used=="count"):
         query+="COUNT("
         for i in selected_columns:
-            query+= i
+            query+= i[0]
             if(comma_count<comma_count_max):
                 query+=","
                 comma_count+=1
@@ -334,15 +472,15 @@ def generate_query(query_array):
         
         query+= " "
     elif(agg_funtion_used=="get"):
-        
+        print("in making query fxn - selected_columns",selected_columns)
         if(len(selected_columns)!=0):
             for i in selected_columns:
-                query+=i
+                query+=i[0]
                 if(comma_count<comma_count_max):
                     query+=","
                     comma_count+=1
-        else:
-            query+="*"
+        # else:
+        #     query+="*"
         
         query+= " "
     elif(agg_funtion_used=="min"):
@@ -394,10 +532,21 @@ def generate_query(query_array):
 
         query+= "WHERE "
         for item in where_clause:
-            query+= item["col"] + " " + item["op"] + " " + item["val"]+ " "
-            if(and_count<and_count_max):
-                query+="AND"
-                and_count+=1
+            if(item["op"]=="starts_with"):
+               query+= item["col"] + " " + "LIKE" + " " + "'"+ item["val"] +"%'"+ " "
+               if(and_count<and_count_max):
+                    query+="AND"
+                    and_count+=1 
+            elif(item["op"]=="ends_with"):
+               query+= item["col"] + " " + "LIKE" + " " + "'%"+ item["val"] +"'"+ " "
+               if(and_count<and_count_max):
+                    query+="AND"
+                    and_count+=1 
+            else:
+                query+= item["col"] + " " + item["op"] + " " + item["val"]+ " "
+                if(and_count<and_count_max):
+                    query+="AND"
+                    and_count+=1
             
             query+= " "
 
@@ -408,10 +557,12 @@ def generate_query(query_array):
     
 map_keywords = {
     "get" : ['show', 'retrieve', 'display', 'list', 'fetch', 'view', 'select', 'show',"search","find","yet","give"],
-    "where" : ["whose","were", "filter","condition","limit","narrow","include","restrict","match","constraints"],
+    "where" : ["whose","were", "filter","condition","limit","narrow","include","restrict","match","constraints","bear","their"],
     "max": ["maximum","largest","maxi"],
     "min": ["minimum","smallest","mini"],
-    "distinct" : ["unique","different"]
+    "distinct" : ["unique","different"],
+    "starts_with" : ["start", "starts"],
+    "ends_with" : ["ends","end"]
 }    
 
 def replace_keywords_if_present(token):
@@ -422,25 +573,29 @@ def replace_keywords_if_present(token):
         
     return token
 
-   
+            
+
 #FOR DEBUGGINGGG---------
 
-# sentence = "yet all emails phone names from database db2 were age is greater than 25 and fav_destination_state is equal 10"
+
+# sentence = "show full name and email f and age and gender where age is greater than 40 and less than 50 and full name starts with s"
 # # sentence = "where age is more than 50 show yet give find emails "
 # doc = nlp(sentence)
 
+# print("sentence..........")
+# print(sentence)
+
 # filtered_tokens = []
 # for token in doc:
-#     # print(mapper_function(token.text, token.pos_))
+#     # print((token.text, token.pos_))
 #     if(filter_token(token.text,token.pos_)!=""):
 #         filtered_tokens.append(filter_token(token.text,token.pos_))
 
-
 # print("extracting tokens.............")
 # print(filtered_tokens)
-# print("seperating them in different arrays...")
-# print(str(extracting_info(filtered_tokens)))
-# print("query generated....")
+# # print("seperating them in different arrays...")
+# # print(str(extracting_info(filtered_tokens)))
+# # print("query generated....")
 # print(generate_query(extracting_info(filtered_tokens)))
 
 # print("executing query on SQL")
@@ -449,6 +604,16 @@ def replace_keywords_if_present(token):
 
 # print(results)
 
+
+
+
+
+
+
+
+
+
+#FLASK APP
 
 app = Flask(__name__)
 
@@ -474,15 +639,9 @@ def process_query():
             filtered_tokens.append(filter_token(token.text,token.pos_))
 
 
-    print("extracting tokens.............")
-    print(filtered_tokens)
-    print("seperating them in different arrays...")
-    print(str(extracting_info(filtered_tokens)))
-    print("query generated....")
-    print(generate_query(extracting_info(filtered_tokens)))
-
-    print("executing query on SQL")
     sqlQuery=generate_query(extracting_info(filtered_tokens))
+    print("query generated: ", sqlQuery)
+    print("executing query on SQL")
     results=execute_query(sqlQuery)
 
     # print(results)
