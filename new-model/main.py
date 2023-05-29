@@ -210,7 +210,7 @@ reserved_keywords = ["get","from","where","and", "order","group","having","count
 
 
 def map_column_with_db(text):
-    if(text in columns_present_in_DB):
+    if(len(text)==1 and text[0] in columns_present_in_DB):
         return (text,True)
     for key in columns_present_in_DB:
                 similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
@@ -239,22 +239,27 @@ def map_input_column_array_with_db_columns(input_columns):
     mapped_array=[]
     
     for text in input_columns:
+            print("checking for text in DB :",text)
             if(len(text)==1):
-                print("checking for text :",text)
-                key, is_changed = map_column_with_db(text)
-                if(is_changed or key==text):
+                key, is_present = map_column_with_db(text)
+                # print("map_column_with_db(text)",map_column_with_db(text))
+
+                if(is_present):
                         input_columns.remove(text)
+                        print("column appending in array ",key[0])
                         mapped_array.append(key[0])
+                
             else:                   
                 generated_columns_combinations = generate_different_columns_permutations(text)
                 print("all combinations of columns.. which were not matched")
                 print(generated_columns_combinations)
 
                 for item in generated_columns_combinations:
-                    key, is_changed = map_column_with_db(item)
+                    key, is_present = map_column_with_db(item)
                     # print(map_column_with_db(item))
-                    if(is_changed):
-                        if((key in mapped_array) == 0):
+                    if(is_present):
+                        if(key not in mapped_array):
+                            print("column appending in array ",key)
                             mapped_array.append(key)
                             
 
@@ -319,12 +324,14 @@ def extracting_info(filtered_tokens):
 
     i=0
 
-    not_allowed = ["with","all","the","is","like","me","than","then"]
-
+    not_allowed = ["with","the","is","like","me","all","than","then"]
+    updated_filtered_tokens=[]
     for item in filtered_tokens:
-        if(item in not_allowed):
-            filtered_tokens.remove(item)
+        # print("item is : ",item)
+        if(item not in not_allowed):
+            updated_filtered_tokens.append(item)
 
+    filtered_tokens = updated_filtered_tokens
     print("pre-processing the tokens")
     print(filtered_tokens)
     
@@ -339,7 +346,7 @@ def extracting_info(filtered_tokens):
             i=end_index
 
             got_column =map_input_column_array_with_db_columns([column_select])[0]
-            print("got_column in and fxn",got_column)
+            print("got_column in GET Function : ",got_column)
                
 
             if(got_column in columns_present_in_DB):
@@ -364,11 +371,12 @@ def extracting_info(filtered_tokens):
             i=end_index
 
             # print("column_select",column_select)
-            got_column=""
-            if(len(column_select)==1):
-                got_column = map_input_column_array_with_db_columns([column_select])[0]
-            else:
-                got_column= map_input_column_array_with_db_columns([column_select])[0][0]
+            if(len(map_input_column_array_with_db_columns([column_select]))!=0):
+                got_column=""
+                if(len(column_select)==1):
+                    got_column = map_input_column_array_with_db_columns([column_select])[0]
+                else:
+                    got_column= map_input_column_array_with_db_columns([column_select])[0][0]
 
             # print("got_column",got_column)
 
@@ -383,8 +391,8 @@ def extracting_info(filtered_tokens):
                 i=i+2
         elif(filtered_tokens[i]=="and"):
             # print("in and fxn")
- 
-            if(filtered_tokens[i+1] in [">","<","="]):
+            
+            if(filtered_tokens[i+1] in [">","<","="] and len(where_clause)!=0):
                 obj = {
                     "col": where_clause[-1]["col"],
                     "op": filtered_tokens[i+1],
@@ -400,8 +408,10 @@ def extracting_info(filtered_tokens):
                     column_select.append(filtered_tokens[it])  
                 i=end_index
 
-                got_column = map_input_column_array_with_db_columns([column_select])[0]
-                print("got_column in and fxn",got_column)
+                got_column=""
+                if(len(map_input_column_array_with_db_columns([column_select]))!=0):
+                    got_column = map_input_column_array_with_db_columns([column_select])[0]
+                    print("got_column in AND Function : ",got_column)
                
 
                 if(got_column in columns_present_in_DB):
@@ -578,7 +588,7 @@ def replace_keywords_if_present(token):
 #FOR DEBUGGINGGG---------
 
 
-# sentence = "show full name and email f and age and gender where age is greater than 40 and less than 50 and full name starts with s"
+# sentence = "get me all full name and email f and age and gender where age is greater than 40 and less than 50 and full name starts with s"
 # # sentence = "where age is more than 50 show yet give find emails "
 # doc = nlp(sentence)
 
@@ -652,3 +662,6 @@ def process_query():
 
 if __name__ == '__main__':
     app.run(host="localhost", port=8000, debug=True)
+
+
+
