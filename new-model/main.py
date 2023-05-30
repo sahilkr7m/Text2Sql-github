@@ -214,7 +214,7 @@ def map_column_with_db(text):
         return (text,True)
     for key in columns_present_in_DB:
                 similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
-                if(similarity_ratio>0.8):  #changed here
+                if(similarity_ratio>0.7):  #changed here
                     return (key,True)
     
     return (text,False)
@@ -567,7 +567,7 @@ def generate_query(query_array):
     
 map_keywords = {
     "get" : ['show', 'retrieve', 'display', 'list', 'fetch', 'view', 'select', 'show',"search","find","yet","give"],
-    "where" : ["whose","were", "filter","condition","limit","narrow","include","restrict","match","constraints","bear","their"],
+    "where" : ["whose","were", "filter","condition","limit","narrow","include","restrict","match","constraints","bear","their","real"],
     "max": ["maximum","largest","maxi"],
     "min": ["minimum","smallest","mini"],
     "distinct" : ["unique","different"],

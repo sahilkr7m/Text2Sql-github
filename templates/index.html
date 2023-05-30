@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Audio Transcription</title>
+    <title>Natural Language to SQL</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <style>
         body {
@@ -68,7 +68,7 @@
 </head>
 
 <body>
-    <h1>Audio Transcription</h1>
+    <h1>Natural Language to SQL</h1>
     <button id="recordButton">Record</button>
     <button id="stopButton" disabled>Stop</button>
     <div id="transcriptionResult"></div>
@@ -145,7 +145,9 @@
 
     <table id="responseTable">
         <tr>
-            <th>Result</th>
+            <th></th>
+            <p><i>Example Query:-show full name and email f and age and gender where age is greater than 40 and less
+                    than 50 and full name starts with s</i></p>
         </tr>
         <tr>
             <td id="responseText"></td>

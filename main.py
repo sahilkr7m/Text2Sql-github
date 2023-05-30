@@ -13,7 +13,7 @@ def transcribe_audio(audio_data):
 
     
     audio = audio.set_channels(1)
-    audio = audio.set_frame_rate(16000)  # Set sample rate to 16000 Hz
+    audio = audio.set_frame_rate(16000)  
     audio.export("temp.wav", format="wav")
 
     
