@@ -331,6 +331,9 @@ def extracting_info(filtered_tokens):
         if(item not in not_allowed):
             updated_filtered_tokens.append(item)
 
+    if("get" not in filtered_tokens):
+        updated_filtered_tokens = ["get"] + updated_filtered_tokens
+
     filtered_tokens = updated_filtered_tokens
     print("pre-processing the tokens")
     print(filtered_tokens)
@@ -588,25 +591,25 @@ def replace_keywords_if_present(token):
 #FOR DEBUGGINGGG---------
 
 
-# sentence = "get me all full name and email f and age and gender where age is greater than 40 and less than 50 and full name starts with s"
-# # sentence = "where age is more than 50 show yet give find emails "
-# doc = nlp(sentence)
+sentence = " full name and email and age and gender where age is greater than 40 and less than 50 and full name starts with s"
+# sentence = "where age is more than 50 show yet give find emails "
+doc = nlp(sentence)
 
-# print("sentence..........")
-# print(sentence)
+print("sentence..........")
+print(sentence)
 
-# filtered_tokens = []
-# for token in doc:
-#     # print((token.text, token.pos_))
-#     if(filter_token(token.text,token.pos_)!=""):
-#         filtered_tokens.append(filter_token(token.text,token.pos_))
+filtered_tokens = []
+for token in doc:
+    # print((token.text, token.pos_))
+    if(filter_token(token.text,token.pos_)!=""):
+        filtered_tokens.append(filter_token(token.text,token.pos_))
 
-# print("extracting tokens.............")
-# print(filtered_tokens)
+print("extracting tokens.............")
+print(filtered_tokens)
 # # print("seperating them in different arrays...")
 # # print(str(extracting_info(filtered_tokens)))
 # # print("query generated....")
-# print(generate_query(extracting_info(filtered_tokens)))
+print(generate_query(extracting_info(filtered_tokens)))
 
 # print("executing query on SQL")
 # sqlQuery=generate_query(extracting_info(filtered_tokens))
@@ -625,43 +628,43 @@ def replace_keywords_if_present(token):
 
 #FLASK APP
 
-app = Flask(__name__)
+# app = Flask(__name__)
 
 
 
-@app.route('/')
-def home():
-    return render_template('Text2Sql-github\templates\index.html', results=[])
+# @app.route('/')
+# def home():
+#     return render_template('Text2Sql-github\templates\index.html', results=[])
 
-@app.route('/query', methods=['POST'])
-def process_query():
+# @app.route('/query', methods=['POST'])
+# def process_query():
 
-    text_data = request.get_data(as_text=True)
-    print(text_data)
+#     text_data = request.get_data(as_text=True)
+#     print(text_data)
 
-    sentence = text_data
-    doc = nlp(sentence)
+#     sentence = text_data
+#     doc = nlp(sentence)
 
-    filtered_tokens = []
-    for token in doc:
-        # print(mapper_function(token.text, token.pos_))
-        if(filter_token(token.text,token.pos_)!=""):
-            filtered_tokens.append(filter_token(token.text,token.pos_))
-
-
-    sqlQuery=generate_query(extracting_info(filtered_tokens))
-    print("query generated: ", sqlQuery)
-    print("executing query on SQL")
-    results=execute_query(sqlQuery)
-
-    # print(results)
+#     filtered_tokens = []
+#     for token in doc:
+#         # print(mapper_function(token.text, token.pos_))
+#         if(filter_token(token.text,token.pos_)!=""):
+#             filtered_tokens.append(filter_token(token.text,token.pos_))
 
 
-    return str(results)
-    # return render_template('Text2Sql-github\templates\index.html', results=results)
+#     sqlQuery=generate_query(extracting_info(filtered_tokens))
+#     print("query generated: ", sqlQuery)
+#     print("executing query on SQL")
+#     results=execute_query(sqlQuery)
 
-if __name__ == '__main__':
-    app.run(host="localhost", port=8000, debug=True)
+#     # print(results)
+
+
+#     return str(results)
+#     # return render_template('Text2Sql-github\templates\index.html', results=results)
+
+# if __name__ == '__main__':
+#     app.run(host="localhost", port=8000, debug=True)
 
 
 
