@@ -214,7 +214,7 @@ def map_column_with_db(text):
         return (text,True)
     for key in columns_present_in_DB:
                 similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
-                if(similarity_ratio>0.7):  #changed here
+                if(similarity_ratio>0.6):  #changed here
                     return (key,True)
     
     return (text,False)
@@ -305,7 +305,7 @@ def next_token_index(index_start, filtered_tokens):
     
     i = index_start+1
     while(i<len(filtered_tokens)):
-        if (filtered_tokens[i] in reserved_keywords):
+        if (filtered_tokens[i] in reserved_keywords or i==len(filtered_tokens)):
             return i
         i+=1
         
@@ -347,13 +347,13 @@ def extracting_info(filtered_tokens):
             for it in range(i+1, end_index):
                     column_select.append(filtered_tokens[it])  
             i=end_index
+            if(map_input_column_array_with_db_columns([column_select])):
+                got_column =map_input_column_array_with_db_columns([column_select])[0]
+                print("got_column in GET Function : ",got_column)
+                
 
-            got_column =map_input_column_array_with_db_columns([column_select])[0]
-            print("got_column in GET Function : ",got_column)
-               
-
-            if(got_column in columns_present_in_DB):
-                    selected_columns.append([got_column])
+                if(got_column in columns_present_in_DB):
+                        selected_columns.append([got_column])
       
             # print("in get fxn column_insert",column_insert, " endindex", i)
 
@@ -393,6 +393,7 @@ def extracting_info(filtered_tokens):
                 where_clause.append(obj )
                 i=i+2
         elif(filtered_tokens[i]=="and"):
+
             # print("in and fxn")
             
             if(filtered_tokens[i+1] in [">","<","="] and len(where_clause)!=0):
@@ -405,7 +406,7 @@ def extracting_info(filtered_tokens):
                 i=i+3
             else: 
                 end_index = next_token_index(i, filtered_tokens)
-
+            
                 column_select=[]
                 for it in range(i+1, end_index):
                     column_select.append(filtered_tokens[it])  
@@ -416,10 +417,9 @@ def extracting_info(filtered_tokens):
                     got_column = map_input_column_array_with_db_columns([column_select])[0]
                     print("got_column in AND Function : ",got_column)
                
-
                 if(got_column in columns_present_in_DB):
                     
-                    if(filtered_tokens[i] in [">","<","=","starts_with","ends_with"]):              
+                    if(i !=len(filtered_tokens) and filtered_tokens[i] in [">","<","=","starts_with","ends_with"]):              
                             obj = {
                             "col": map_input_column_array_with_db_columns([column_select])[0],
                             "op": filtered_tokens[i],
@@ -430,6 +430,7 @@ def extracting_info(filtered_tokens):
                     else:
                             print("got_column appending in select array",got_column)
                             selected_columns.append([got_column])
+        
 
                         
                         
@@ -471,6 +472,11 @@ def generate_query(query_array):
     agg_funtion_used =query_array[4]
 
     query = "SELECT "
+
+    if(selected_columns==[]):
+        return "ERROR in Input by User" 
+
+
     comma_count=0
     comma_count_max = len(selected_columns)-1
     if(agg_funtion_used=="count"):
@@ -570,7 +576,7 @@ def generate_query(query_array):
     
 map_keywords = {
     "get" : ['show', 'retrieve', 'display', 'list', 'fetch', 'view', 'select', 'show',"search","find","yet","give"],
-    "where" : ["whose","were", "filter","condition","limit","narrow","include","restrict","match","constraints","bear","their","real"],
+    "where" : ["whose","were", "filter","condition","limit","narrow","include","restrict","match","constraints","bear","their"],
     "max": ["maximum","largest","maxi"],
     "min": ["minimum","smallest","mini"],
     "distinct" : ["unique","different"],
@@ -591,25 +597,25 @@ def replace_keywords_if_present(token):
 #FOR DEBUGGINGGG---------
 
 
-sentence = " full name and email and age and gender where age is greater than 40 and less than 50 and full name starts with s"
-# sentence = "where age is more than 50 show yet give find emails "
-doc = nlp(sentence)
+# sentence = "email"
+# # sentence = "where age is more than 50 show yet give find emails "
+# doc = nlp(sentence)
 
-print("sentence..........")
-print(sentence)
+# print("sentence..........")
+# print(sentence)
 
-filtered_tokens = []
-for token in doc:
-    # print((token.text, token.pos_))
-    if(filter_token(token.text,token.pos_)!=""):
-        filtered_tokens.append(filter_token(token.text,token.pos_))
+# filtered_tokens = []
+# for token in doc:
+#     # print((token.text, token.pos_))
+#     if(filter_token(token.text,token.pos_)!=""):
+#         filtered_tokens.append(filter_token(token.text,token.pos_))
 
-print("extracting tokens.............")
-print(filtered_tokens)
-# # print("seperating them in different arrays...")
-# # print(str(extracting_info(filtered_tokens)))
-# # print("query generated....")
-print(generate_query(extracting_info(filtered_tokens)))
+# print("extracting tokens.............")
+# print(filtered_tokens)
+# # # print("seperating them in different arrays...")
+# # # print(str(extracting_info(filtered_tokens)))
+# # # print("query generated....")
+# print(generate_query(extracting_info(filtered_tokens)))
 
 # print("executing query on SQL")
 # sqlQuery=generate_query(extracting_info(filtered_tokens))
@@ -628,43 +634,42 @@ print(generate_query(extracting_info(filtered_tokens)))
 
 #FLASK APP
 
-# app = Flask(__name__)
+app = Flask(__name__)
 
 
 
-# @app.route('/')
-# def home():
-#     return render_template('Text2Sql-github\templates\index.html', results=[])
+@app.route('/')
+def home():
+    return render_template('Text2Sql-github\templates\index.html', results=[])
 
-# @app.route('/query', methods=['POST'])
-# def process_query():
+@app.route('/query', methods=['POST'])
+def process_query():
 
-#     text_data = request.get_data(as_text=True)
-#     print(text_data)
+    text_data = request.get_data(as_text=True)
+    print(text_data)
 
-#     sentence = text_data
-#     doc = nlp(sentence)
+    sentence = text_data
+    doc = nlp(sentence)
 
-#     filtered_tokens = []
-#     for token in doc:
-#         # print(mapper_function(token.text, token.pos_))
-#         if(filter_token(token.text,token.pos_)!=""):
-#             filtered_tokens.append(filter_token(token.text,token.pos_))
-
-
-#     sqlQuery=generate_query(extracting_info(filtered_tokens))
-#     print("query generated: ", sqlQuery)
-#     print("executing query on SQL")
-#     results=execute_query(sqlQuery)
-
-#     # print(results)
+    filtered_tokens = []
+    for token in doc:
+        # print(mapper_function(token.text, token.pos_))
+        if(filter_token(token.text,token.pos_)!=""):
+            filtered_tokens.append(filter_token(token.text,token.pos_))
 
 
-#     return str(results)
-#     # return render_template('Text2Sql-github\templates\index.html', results=results)
+    sqlQuery=generate_query(extracting_info(filtered_tokens))
+    print("query generated: ", sqlQuery)
+    print("executing query on SQL")
+    results=execute_query(sqlQuery)
 
-# if __name__ == '__main__':
-#     app.run(host="localhost", port=8000, debug=True)
+    # print(results)
+
+
+    return str(results)
+
+if __name__ == '__main__':
+    app.run(host="localhost", port=8000, debug=True)
 
 
 
