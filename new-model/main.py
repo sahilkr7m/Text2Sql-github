@@ -235,6 +235,16 @@ def generate_different_columns_permutations(my_array):
 
     return concatenated_combinations
 
+
+def join_column_names(array):
+    string=""
+    for item in array:
+        string+="_"+ item
+    
+    return string
+
+
+
 def map_input_column_array_with_db_columns(input_columns):
     mapped_array=[]
     
@@ -250,17 +260,26 @@ def map_input_column_array_with_db_columns(input_columns):
                         mapped_array.append(key[0])
                 
             else:                   
-                generated_columns_combinations = generate_different_columns_permutations(text)
-                print("all combinations of columns.. which were not matched")
-                print(generated_columns_combinations)
+                print("Text we got: ",text)
+                print("join_column_names(text)",join_column_names(text))
+                key, is_present = map_column_with_db(join_column_names(text))
 
-                for item in generated_columns_combinations:
-                    key, is_present = map_column_with_db(item)
-                    # print(map_column_with_db(item))
-                    if(is_present):
-                        if(key not in mapped_array):
-                            print("column appending in array ",key)
-                            mapped_array.append(key)
+                if(is_present):
+                        input_columns.remove(text)
+                        print("column appending in array ",key)
+                        mapped_array.append(key)
+                
+                # generated_columns_combinations = generate_different_columns_permutations(text)
+                # print("all combinations of columns.. which were not matched")
+                # print(generated_columns_combinations)
+
+                # for item in generated_columns_combinations:
+                #     key, is_present = map_column_with_db(item)
+                #     # print(map_column_with_db(item))
+                #     if(is_present):
+                #         if(key not in mapped_array):
+                #             print("column appending in array ",key)
+                #             mapped_array.append(key)
                             
 
 
@@ -597,8 +616,8 @@ def replace_keywords_if_present(token):
 #FOR DEBUGGINGGG---------
 
 
-# sentence = "email"
-# # sentence = "where age is more than 50 show yet give find emails "
+# sentence = "age and email id"
+# # sentence = "where age is more than 50 show yet give find email id "
 # doc = nlp(sentence)
 
 # print("sentence..........")
@@ -612,9 +631,9 @@ def replace_keywords_if_present(token):
 
 # print("extracting tokens.............")
 # print(filtered_tokens)
-# # # print("seperating them in different arrays...")
-# # # print(str(extracting_info(filtered_tokens)))
-# # # print("query generated....")
+# # print("seperating them in different arrays...")
+# # print(str(extracting_info(filtered_tokens)))
+# # print("query generated....")
 # print(generate_query(extracting_info(filtered_tokens)))
 
 # print("executing query on SQL")
