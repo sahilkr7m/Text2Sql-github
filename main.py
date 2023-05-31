@@ -56,7 +56,7 @@ def process_audio():
     response_text = send_transcription(transcription)
 
     
-    response_data = [['Transcription'], [response_text]]
+    response_data = [[''], [response_text]]
 
     return jsonify(response_data)
 

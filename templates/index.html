@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
             padding: 20px;
             background-color: #fff;
@@ -31,16 +31,28 @@
             margin-top: 20px;
         }
 
-        #responseText {
-            font-weight: bold;
-            font-size: 18px;
-            line-height: 1.5;
-            margin-top: 10px;
+        #responseTable {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        #responseText span {
-            display: block;
-            margin-bottom: 5px;
+        #responseTable th,
+        #responseTable td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        #responseTable th {
+            background-color: #e56353;
+            color: #fff;
+        }
+
+        #responseTable tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        #responseTable tr:hover {
+            background-color: #ddd;
         }
 
         #recordButton,
@@ -69,9 +81,39 @@
 
 <body>
     <h1>Natural Language to SQL</h1>
-    <button id="recordButton">Record</button>
-    <button id="stopButton" disabled>Stop</button>
-    <div id="transcriptionResult"></div>
+    <div class="container">
+        <button id="recordButton">Record</button>
+        <button id="stopButton" disabled>Stop</button>
+        <div id="transcriptionResult"></div>
+    </div>
+    <div class="container">
+        <table>
+            <tr>
+                <th>Example Query:</th>
+                <td>Show full name and email f and age and gender where age is greater than 40 and less than 50</td>
+            </tr>
+        </table>
+    </div>
+    <div class="container">
+        <table id="responseTable">
+            {% if response %}
+            <tr>
+                {% for column in response[0] %}
+                <th>{{ column }}</th>
+                {% endfor %}
+            </tr>
+            {% for row in response[1:] %}
+            <tr>
+                {% for value in row %}
+                <td>{{ value }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+            {% endif %}
+        </table>
+    </div>
+
+
 
     <script>
         var audioChunks = [];
@@ -106,17 +148,21 @@
                             contentType: false,
                             success: function (response) {
                                 console.log(response);
-                                var new_response = response[1][0];
-                                var cleanedText = new_response.replace(/[^a-zA-Z0-9\s]/g, ''); // Remove unnecessary symbols
-                                var words = cleanedText.trim().split(/\s+/); // Split cleaned text by whitespace
+                                var responseTable = document.getElementById('responseTable');
 
-                                responseText.innerHTML = ''; // Clear previous content
+                                // Clear previous content
+                                while (responseTable.rows.length > 1) {
+                                    responseTable.deleteRow(1);
+                                }
 
-                                words.forEach(function (word) {
-                                    var wordElement = document.createElement('span');
-                                    wordElement.textContent = word;
-                                    responseText.appendChild(wordElement);
-                                    responseText.appendChild(document.createElement('br')); // Add line break after each word
+                                response.forEach(function (row) {
+                                    var tableRow = document.createElement('tr');
+                                    row.forEach(function (cell) {
+                                        var tableCell = document.createElement('td');
+                                        tableCell.textContent = cell;
+                                        tableRow.appendChild(tableCell);
+                                    });
+                                    responseTable.appendChild(tableRow);
                                 });
                             },
                             error: function (xhr, status, error) {
@@ -141,18 +187,6 @@
         recordButton.addEventListener('click', startRecording);
         stopButton.addEventListener('click', stopRecording);
     </script>
-
-
-    <table id="responseTable">
-        <tr>
-            <th></th>
-            <p><i>Example Query:-show full name and email f and age and gender where age is greater than 40 and less
-                    than 50 and full name starts with s</i></p>
-        </tr>
-        <tr>
-            <td id="responseText"></td>
-        </tr>
-    </table>
 </body>
 
 </html>

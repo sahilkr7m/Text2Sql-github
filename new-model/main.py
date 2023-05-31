@@ -1,9 +1,12 @@
 from flask import Flask, render_template, request
 import spacy
 import difflib
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 import mysql.connector
 from itertools import combinations
-
+from fuzzywuzzy import fuzz
+sbert_model = SentenceTransformer("paraphrase-mpnet-base-v2")
 nlp = spacy.load("en_core_web_sm")
 
 
@@ -642,6 +645,230 @@ def replace_keywords_if_present(token):
 
 # print(results)
 
+################################################################################################
+
+##If the Above code doesnt works , else condition ===>
+
+
+def extract_column_from_query(query):
+    doc = nlp(query)
+    column = None
+
+    for token in doc:
+        if token.pos_ == "NOUN" and token.text in columns_present_in_DB:
+            column = token.text
+            break
+
+    return column
+
+def generate_prompt(column_name, operator=None, value=None, select_clause="*", from_clause=None, group_by_clause=None, having_clause=None, order_by_clause=None, limit_clause=None, like_value=None, insert_clause=None, update_clause=None):
+    prompt = column_name.replace("_", " ").title()
+
+    conditions = []
+    if operator and value:
+        conditions.append(f"{column_name} {operator} {value}")
+    if group_by_clause:
+        conditions.append(f"GROUP BY {group_by_clause}")
+    if having_clause:
+        conditions.append(f"HAVING {having_clause}")
+    if order_by_clause:
+        conditions.append(f"ORDER BY {order_by_clause}")
+    if limit_clause:
+        conditions.append(f"LIMIT {limit_clause}")
+    if like_value:
+        conditions.append(f"{column_name} LIKE '{like_value}'")
+    if insert_clause:
+        conditions.append(f"INSERT INTO table {insert_clause}")
+    if update_clause:
+        conditions.append(f"UPDATE table SET {update_clause}")
+
+    where_clause = " AND ".join(conditions)
+    prompt = f"What is the {prompt} where {where_clause}?"
+
+    return prompt
+
+
+
+prompts = []
+
+
+for i in range(1000):
+    column = columns_present_in_DB[i % len(columns_present_in_DB)]
+
+    
+    select_clause = columns_present_in_DB[i % len(columns_present_in_DB)]
+    prompt = generate_prompt(column, select_clause=select_clause)
+    prompts.append(prompt)
+
+    
+    
+
+
+def generate_query_2(column_name, table_name, where_clause=None, select_clause="*", from_clause=None,
+                   group_by_clause=None, having_clause=None, order_by_clause=None, limit_clause=None,
+                   like_value=None, insert_clause=None, update_clause=None, delete_clause=None):
+    queries = []
+
+    
+
+    if not any([insert_clause, update_clause, delete_clause]):
+        query = f"SELECT {select_clause} FROM {table_name}"
+        if from_clause:
+            query += f" {from_clause}"
+        if where_clause:
+            query += f" WHERE {where_clause}"
+        if group_by_clause:
+            query += f" GROUP BY {group_by_clause}"
+        if having_clause:
+            query += f" HAVING {having_clause}"
+        if order_by_clause:
+            query += f" ORDER BY {order_by_clause}"
+        if limit_clause:
+            query += f" LIMIT {limit_clause}"
+        if like_value:
+            query += f" AND {column_name} LIKE '{like_value}%'"
+
+        queries.append(query)
+
+        second_query = query.replace(f"SELECT {select_clause}", f"SELECT {select_clause}")
+        queries.append(second_query)
+
+        if "and" in table_name:
+            tables = table_name.split(" and ")
+            for t in tables:
+                q = query.replace(table_name, t)
+                queries.append(q)
+
+    return queries
+
+
+queries = []
+
+
+for prompt in prompts:
+    column = prompt.split(" ")[3].lower()  
+    operator = prompt.split(" ")[5]  
+    value = prompt.split(" ")[-1]  
+    select_clause = prompt.split(" ")[2]  
+    from_clause = "svoc_v2"
+    group_by_clause = "some_column" if "GROUP BY" in prompt else None
+    having_clause = "some_condition" if "HAVING" in prompt else None
+    order_by_clause = "some_column" if "ORDER BY" in prompt else None
+    limit_clause = "some_limit" if "LIMIT" in prompt else None
+    like_value = prompt.split("'")[1] if "LIKE" in prompt else None
+
+    query = generate_query_2(column, "svoc_v2", where_clause=f"{column} {operator} '{value}'", select_clause=select_clause, from_clause=from_clause, group_by_clause=group_by_clause, having_clause=having_clause, order_by_clause=order_by_clause, limit_clause=limit_clause, like_value=like_value)
+    queries.extend(query)
+
+def generate_query_from_user_query(user_query):
+    doc = nlp(user_query)
+    column_matches = []
+    operator = None
+    value = None
+
+    operator_mapping = {
+        "equal": "=",
+        "equals": "=",
+        "is equal to": "=",
+        "less": "<",
+        "less than": "<",
+        "lesser than": "<",
+        "greater": ">",
+        "greater than": ">",
+        "more than": ">",
+    }
+
+    for token in doc:
+        if token.text in columns_present_in_DB:
+            column_matches.append(token.text)
+        elif token.text in operator_mapping:
+            operator = operator_mapping[token.text]
+        elif operator and token.pos_ in ["NUM", "NOUN"]:
+            value = token.text
+    
+    sql_prompts = []
+    sql_queries = []
+
+    if column_matches and operator and value:
+        where_clause = " AND ".join([f"{column} {operator} '{value}'" for column in column_matches])
+        select_clause = ", ".join(column_matches)
+        query = generate_query_2(None, "svoc_v2", where_clause=where_clause, select_clause=select_clause)
+        sql_prompts.append(user_query)
+        sql_queries.append(query)
+    elif column_matches:
+        for column_match in column_matches:
+            prompt = generate_prompt(column_match)
+            query = generate_query_2(column_match, "svoc_v2", select_clause=column_match)
+            sql_prompts.append(prompt)
+            sql_queries.append(query)
+    else:
+        for column in columns_present_in_DB:
+            prompt = generate_prompt(column)
+            query = generate_query_2(column, "svoc_v2")
+            sql_prompts.append(prompt)
+            sql_queries.append(query)
+
+    user_query_embedding = sbert_model.encode([user_query])
+    sql_prompt_embeddings = sbert_model.encode(sql_prompts)
+
+    similarity_scores = cosine_similarity(user_query_embedding, sql_prompt_embeddings)[0]
+
+    best_match_index = similarity_scores.argmax()
+    best_match_sql_prompt = sql_prompts[best_match_index]
+
+    best_match_index = sql_prompts.index(best_match_sql_prompt)
+    sql_query = sql_queries[best_match_index]
+    print("Generated SQL Query:")
+    print(sql_query)
+
+    return sql_query
+
+
+
+def detect_column_names(user_query, columns_list):
+    
+    doc = nlp(user_query)
+
+    detected_columns = []
+
+    
+    for token in doc:
+        best_match_score = 0
+        best_match_column = None
+        
+        for column in columns_list:
+            
+            match_score = fuzz.ratio(token.text.lower(), column.lower())
+            
+            
+            if match_score > best_match_score:
+                best_match_score = match_score
+                best_match_column = column
+        
+        
+        if best_match_score > 80:  
+            detected_columns.append(best_match_column)
+    
+    return detected_columns
+
+
+def replace_column_names(user_query, columns_list, replacement_list):
+    
+    detected_columns = detect_column_names(user_query, columns_list)
+
+    
+    for column in detected_columns:
+        replacement = replacement_list.get(column)
+        if replacement:
+            user_query = user_query.replace(column, replacement)
+
+    return user_query
+
+
+
+
+
+    
 
 
 
@@ -651,6 +878,27 @@ def replace_keywords_if_present(token):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+############################################################################################
 #FLASK APP
 
 app = Flask(__name__)
@@ -681,11 +929,37 @@ def process_query():
     print("query generated: ", sqlQuery)
     print("executing query on SQL")
     results=execute_query(sqlQuery)
+    if(len(results)==0):
+            columns_list = ['email','mobile','number','numbers','name', 'age', 'gender','mails','mail','emails']
+            replacement_list = {
+                    'email': 'emailid_f',
+                    'mobile': 'mobile_f',
+                    'number':'mobile_f',
+                    'numbers':'mobile_f',
+                    'name': 'fullname',
+                    'age': 'age',
+                    'gender': 'gender',
+                    'mail':'emailid_f',
+                    'mails':'emailid_f',
+                    'emails':'emailid_f',
+                }
+    
+            modified_query = replace_column_names(text_data, columns_list, replacement_list)
+            print("modified query is")
+            print(modified_query)
+            sql_query = generate_query_from_user_query(modified_query)
+            print(sql_query)
+            results=execute_query(sql_query[0])
+            # if(sql_query[0]=="SELECT * FROM svoc_v2"):
+            #     results = "NOT-A-PROPER-QUERY"
+            # else:
+            #     results=execute_query(sql_query[0])
+    
 
     # print(results)
 
 
-    return str(results)
+    return (results)
 
 if __name__ == '__main__':
     app.run(host="localhost", port=8000, debug=True)
