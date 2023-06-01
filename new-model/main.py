@@ -217,7 +217,7 @@ def map_column_with_db(text):
         return (text,True)
     for key in columns_present_in_DB:
                 similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
-                if(similarity_ratio>0.6):  #changed here
+                if(similarity_ratio>0.5):  #changed here
                     return (key,True)
     
     return (text,False)
@@ -306,14 +306,14 @@ def filter_token(text, pos ):
             if(text in values):
                 best_match = replace_keywords_if_present(text)
                 change=1
-        if(change==0):
+      
             # print("in filter token fxn and printing all matched operators")
-            for key,value in operator_mapping.items():
-                    similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
+        for key,value in operator_mapping.items():
+                similarity_ratio = difflib.SequenceMatcher(None, key, text).ratio()
                     # print(key,text,difflib.SequenceMatcher(None, key, text).ratio())
-                    if(similarity_ratio>0.8):
-                        best_match = value
-                        change=1
+                if(similarity_ratio>0.8):
+                    best_match = value
+                    change=1
         if(change==0):
             best_match = text
 
@@ -346,7 +346,7 @@ def extracting_info(filtered_tokens):
 
     i=0
 
-    not_allowed = ["with","the","is","like","me","all","than","then"]
+    not_allowed = ["with","the","is","like","me","all","than","then","to"]
     updated_filtered_tokens=[]
     for item in filtered_tokens:
         # print("item is : ",item)
@@ -405,7 +405,7 @@ def extracting_info(filtered_tokens):
 
             # print("got_column",got_column)
 
-            if(got_column in columns_present_in_DB):
+            if(i+1<len(filtered_tokens) and got_column in columns_present_in_DB):
                 # print("here in if condtn")
                 obj = {
                 "col": got_column,
@@ -584,7 +584,7 @@ def generate_query(query_array):
                     query+="AND"
                     and_count+=1 
             else:
-                query+= item["col"] + " " + item["op"] + " " + item["val"]+ " "
+                query+= item["col"] + " " + item["op"] + " '" + item["val"]+ "' "
                 if(and_count<and_count_max):
                     query+="AND"
                     and_count+=1
@@ -603,7 +603,9 @@ map_keywords = {
     "min": ["minimum","smallest","mini"],
     "distinct" : ["unique","different"],
     "starts_with" : ["start", "starts"],
-    "ends_with" : ["ends","end"]
+    "ends_with" : ["ends","end"],
+    "less" : ["below"],
+    "greater" : ["above"]
 }    
 
 def replace_keywords_if_present(token):
@@ -615,7 +617,7 @@ def replace_keywords_if_present(token):
     return token
 
             
-
+###############################################################################################
 #FOR DEBUGGINGGG---------
 
 
@@ -647,7 +649,7 @@ def replace_keywords_if_present(token):
 
 ################################################################################################
 
-##If the Above code doesnt works , else condition ===>
+#Integrated logic , if the user gets an empty response  ===>
 
 
 def extract_column_from_query(query):
@@ -865,40 +867,9 @@ def replace_column_names(user_query, columns_list, replacement_list):
     return user_query
 
 
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ############################################################################################
+
+
 #FLASK APP
 
 app = Flask(__name__)
@@ -925,10 +896,11 @@ def process_query():
             filtered_tokens.append(filter_token(token.text,token.pos_))
 
 
-    sqlQuery=generate_query(extracting_info(filtered_tokens))
-    print("query generated: ", sqlQuery)
+    sqlQuery1=generate_query(extracting_info(filtered_tokens))
+    print("query generated: ", sqlQuery1)
     print("executing query on SQL")
-    results=execute_query(sqlQuery)
+    results=execute_query(sqlQuery1)
+    print(results)
     if(len(results)==0):
             columns_list = ['email','mobile','number','numbers','name', 'age', 'gender','mails','mail','emails']
             replacement_list = {
@@ -947,19 +919,25 @@ def process_query():
             modified_query = replace_column_names(text_data, columns_list, replacement_list)
             print("modified query is")
             print(modified_query)
-            sql_query = generate_query_from_user_query(modified_query)
-            print(sql_query)
-            results=execute_query(sql_query[0])
-            # if(sql_query[0]=="SELECT * FROM svoc_v2"):
-            #     results = "NOT-A-PROPER-QUERY"
-            # else:
-            #     results=execute_query(sql_query[0])
+            sql_query2 = generate_query_from_user_query(modified_query)
+            print(sql_query2)
+            results2=execute_query(sql_query2[0])
+            if(sql_query2[0]=="SELECT * FROM svoc_v2"):
+                results = "NOT-A-PROPER-QUERY"
+            else:
+                results=execute_query(sql_query2[0])
     
 
     # print(results)
 
+    if(len(results)==0):
+    
+        return [sql_query2[0],results2]
+    
+    else:
+        return [sqlQuery1,results]
 
-    return (results)
+    
 
 if __name__ == '__main__':
     app.run(host="localhost", port=8000, debug=True)

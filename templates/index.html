@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 100%;
             margin: 0 auto;
             padding: 20px;
             background-color: #fff;
@@ -34,6 +34,7 @@
         #responseTable {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 20px;
         }
 
         #responseTable th,
@@ -96,31 +97,16 @@
     </div>
     <div class="container">
         <table id="responseTable">
-            {% if response %}
-            <tr>
-                {% for column in response[0] %}
-                <th>{{ column }}</th>
-                {% endfor %}
-            </tr>
-            {% for row in response[1:] %}
-            <tr>
-                {% for value in row %}
-                <td>{{ value }}</td>
-                {% endfor %}
-            </tr>
-            {% endfor %}
-            {% endif %}
+
         </table>
     </div>
-
-
-
     <script>
         var audioChunks = [];
         var mediaRecorder;
         var recordButton = document.getElementById('recordButton');
         var stopButton = document.getElementById('stopButton');
         var transcriptionResult = document.getElementById('transcriptionResult');
+        var responseTable = document.getElementById('responseTable');
 
         function startRecording() {
             navigator.mediaDevices.getUserMedia({ audio: true })
@@ -148,22 +134,41 @@
                             contentType: false,
                             success: function (response) {
                                 console.log(response);
-                                var responseTable = document.getElementById('responseTable');
 
-                                // Clear previous content
-                                while (responseTable.rows.length > 1) {
-                                    responseTable.deleteRow(1);
+
+                                responseTable.innerHTML = "";
+
+                                if (response.length > 0) {
+                                    // Create table header
+                                    var headerRow = document.createElement('tr');
+                                    var firstRow = response[0];
+                                    for (var header in firstRow) {
+                                        var th = document.createElement('th');
+                                        th.textContent = header;
+                                        headerRow.appendChild(th);
+                                    }
+                                    responseTable.appendChild(headerRow);
+
+                                    // Create table rows
+                                    response.forEach(function (row) {
+                                        var tableRow = document.createElement('tr');
+                                        for (var key in row) {
+                                            var td = document.createElement('td');
+                                            td.textContent = row[key] ? row[key].toString() : '';
+                                            tableRow.appendChild(td);
+                                        }
+                                        responseTable.appendChild(tableRow);
+                                    });
+                                } else {
+
+                                    var messageRow = document.createElement('tr');
+                                    var messageCell = document.createElement('td');
+                                    messageCell.colSpan = Object.keys(response[0]).length;
+                                    messageCell.textContent = 'No data available.';
+                                    messageRow.appendChild(messageCell);
+                                    responseTable.appendChild(messageRow);
                                 }
 
-                                response.forEach(function (row) {
-                                    var tableRow = document.createElement('tr');
-                                    row.forEach(function (cell) {
-                                        var tableCell = document.createElement('td');
-                                        tableCell.textContent = cell;
-                                        tableRow.appendChild(tableCell);
-                                    });
-                                    responseTable.appendChild(tableRow);
-                                });
                             },
                             error: function (xhr, status, error) {
                                 console.error(xhr.responseText);
@@ -182,11 +187,16 @@
             recordButton.disabled = false;
             stopButton.disabled = true;
             audioChunks = [];
+
         }
+
+
 
         recordButton.addEventListener('click', startRecording);
         stopButton.addEventListener('click', stopRecording);
     </script>
+
+
 </body>
 
 </html>
